@@ -1,0 +1,29 @@
+version: "3.7"
+
+services:
+  backend:
+    build: ./api
+    ports:
+      - "8000:8000"
+    networks:
+      dn:
+        aliases:
+          - backend.docker
+
+  frontend:
+    build: ./front
+    ports:
+      - "8501:8501"
+    environment:
+      # Внутри docker-сети фронт обращается к бэкенду по имени сервиса
+      BACKEND_URL: "http://backend:8000"
+    depends_on:
+      - backend
+    networks:
+      dn:
+        aliases:
+          - frontend.docker
+
+networks:
+  dn:
+    external: false

@@ -1,0 +1,4 @@
+# Зависимости для Streamlit Community Cloud (точка входа: front/streamlit_app.py).
+# Бэкенд (FastAPI) деплоится отдельно на сервер Selectel — см. api/requirements.txt.
+streamlit==1.41.1
+requests==2.32.3

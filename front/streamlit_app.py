@@ -1,0 +1,66 @@
+"""
+Streamlit-фронтенд. Сам не загружает модели — только отправляет запросы
+к FastAPI-бэкенду и показывает результат.
+
+Адрес бэкенда берётся из (в порядке приоритета):
+  1) st.secrets["BACKEND_URL"]   — для деплоя на Streamlit Community Cloud
+  2) переменной окружения BACKEND_URL  — для docker-compose / локального запуска
+  3) http://127.0.0.1:8000       — значение по умолчанию (локальная отладка)
+"""
+
+import os
+
+import requests
+import streamlit as st
+
+
+def get_backend_url() -> str:
+    try:
+        if "BACKEND_URL" in st.secrets:
+            return st.secrets["BACKEND_URL"]
+    except Exception:
+        pass
+    return os.environ.get("BACKEND_URL", "http://127.0.0.1:8000")
+
+
+BACKEND_URL = get_backend_url().rstrip("/")
+
+st.set_page_config(page_title="Sport & News Classifier", page_icon="🤖")
+st.title("🤖 Классификатор: спорт по фото и тематика новостей")
+st.caption(f"Backend: {BACKEND_URL}")
+
+tab_img, tab_txt = st.tabs(["🏅 Изображение (вид спорта)", "📰 Текст (тематика новости)"])
+
+with tab_img:
+    st.subheader("Классификация изображения")
+    image = st.file_uploader("Загрузите изображение", type=["jpg", "jpeg", "png"])
+    if st.button("Классифицировать изображение", key="btn_img"):
+        if image is None:
+            st.warning("Сначала загрузите изображение.")
+        else:
+            st.image(image, width=300)
+            try:
+                files = {"file": image.getvalue()}
+                res = requests.post(f"{BACKEND_URL}/clf_image", files=files, timeout=60)
+                res.raise_for_status()
+                data = res.json()
+                st.success(f"Вид спорта: **{data['class_name']}**")
+                st.write(f"Уверенность: `{data['confidence']:.2%}`")
+            except Exception as e:
+                st.error(f"Ошибка запроса к бэкенду: {e}")
+
+with tab_txt:
+    st.subheader("Классификация текста")
+    txt = st.text_area("Вставьте текст новостного поста:", height=150)
+    if st.button("Определить тематику", key="btn_txt"):
+        if not txt.strip():
+            st.warning("Введите текст.")
+        else:
+            try:
+                res = requests.post(f"{BACKEND_URL}/clf_text", json={"text": txt}, timeout=60)
+                res.raise_for_status()
+                data = res.json()
+                st.success(f"Тематика: **{data['label']}**")
+                st.write(f"Уверенность: `{data['confidence']:.2%}`")
+            except Exception as e:
+                st.error(f"Ошибка запроса к бэкенду: {e}")
