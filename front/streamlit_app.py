@@ -14,7 +14,13 @@ import requests
 import streamlit as st
 
 
+# set_page_config обязан быть самой первой Streamlit-командой в скрипте.
+st.set_page_config(page_title="Sport & News Classifier", page_icon="🤖")
+
+
 def get_backend_url() -> str:
+    # Обращение к st.secrets оборачиваем в try/except: при локальном запуске
+    # без файла secrets.toml оно бросает исключение — это нормально.
     try:
         if "BACKEND_URL" in st.secrets:
             return st.secrets["BACKEND_URL"]
@@ -25,7 +31,6 @@ def get_backend_url() -> str:
 
 BACKEND_URL = get_backend_url().rstrip("/")
 
-st.set_page_config(page_title="Sport & News Classifier", page_icon="🤖")
 st.title("🤖 Классификатор: спорт по фото и тематика новостей")
 st.caption(f"Backend: {BACKEND_URL}")
 
