@@ -36,23 +36,47 @@ st.caption(f"Backend: {BACKEND_URL}")
 
 tab_img, tab_txt = st.tabs(["🏅 Изображение (вид спорта)", "📰 Текст (тематика новости)"])
 
+def classify_image_bytes(img_bytes: bytes):
+    """Отправляет байты изображения на backend и показывает результат."""
+    st.image(img_bytes, width=300)
+    try:
+        res = requests.post(f"{BACKEND_URL}/clf_image", files={"file": img_bytes}, timeout=60)
+        res.raise_for_status()
+        data = res.json()
+        st.success(f"Вид спорта: **{data['class_name']}**")
+        st.write(f"Уверенность: `{data['confidence']:.2%}`")
+    except Exception as e:
+        st.error(f"Ошибка запроса к бэкенду: {e}")
+
+
 with tab_img:
     st.subheader("Классификация изображения")
-    image = st.file_uploader("Загрузите изображение", type=["jpg", "jpeg", "png"])
-    if st.button("Классифицировать изображение", key="btn_img"):
-        if image is None:
-            st.warning("Сначала загрузите изображение.")
-        else:
-            st.image(image, width=300)
-            try:
-                files = {"file": image.getvalue()}
-                res = requests.post(f"{BACKEND_URL}/clf_image", files=files, timeout=60)
-                res.raise_for_status()
-                data = res.json()
-                st.success(f"Вид спорта: **{data['class_name']}**")
-                st.write(f"Уверенность: `{data['confidence']:.2%}`")
-            except Exception as e:
-                st.error(f"Ошибка запроса к бэкенду: {e}")
+    source = st.radio(
+        "Источник изображения",
+        ["Загрузить файл", "Ссылка (URL)"],
+        horizontal=True,
+        key="img_source",
+    )
+
+    if source == "Загрузить файл":
+        image = st.file_uploader("Загрузите изображение", type=["jpg", "jpeg", "png"])
+        if st.button("Классифицировать изображение", key="btn_img_file"):
+            if image is None:
+                st.warning("Сначала загрузите изображение.")
+            else:
+                classify_image_bytes(image.getvalue())
+    else:
+        url = st.text_input("Вставьте ссылку на изображение (jpg/png)", key="img_url")
+        if st.button("Классифицировать изображение", key="btn_img_url"):
+            if not url.strip():
+                st.warning("Вставьте ссылку на изображение.")
+            else:
+                try:
+                    r = requests.get(url.strip(), timeout=30)
+                    r.raise_for_status()
+                    classify_image_bytes(r.content)
+                except Exception as e:
+                    st.error(f"Не удалось загрузить изображение по ссылке: {e}")
 
 with tab_txt:
     st.subheader("Классификация текста")
